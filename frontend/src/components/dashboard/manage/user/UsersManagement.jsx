@@ -3,22 +3,25 @@ import {
      UserPlus,
      Key,
 } from "lucide-react";
-import { useAuth } from "../../../context/AuthContext";
+import { useAuth } from "../../../../context/AuthContext";
 import AddUserFormModal from "./AddUserFormModal";
 import UsersTable from "./UsersTable";
 import TaskAssignmentModal from "./TaskAssignmentModal";
-import { addUser } from "../../../services/authService"; // Import the API function
+import { addUser, updateUser } from "../../../../services/authService"; // Import the API function
 import { toast } from "react-hot-toast";
-import { useUserDropdowns } from "../../../hooks/useUserDropdowns";
-import { useDeviceInfo } from "../../../hooks/useDeviceInfo";
-
+import { useUserDropdowns } from "../../../../hooks/useUserDropdowns";
+import { useDeviceInfo } from "../../../../hooks/useDeviceInfo";
+import DeleteUserModal from "./DeleteUserModal";
+import { deleteUser } from "../../../../services/authService";
 
 const UsersManagement = ({
-     users,
-     projects,
+     users = [],
+     projects = [],
+     loading,
      onUpdateUsers,
      pendingRequests = [],
      onResolveRequest,
+     loadUsers
 }) => {
      const { isSuperAdmin, canViewSalary } = useAuth();
      const [assigningUser, setAssigningUser] = useState(null);
@@ -35,6 +38,10 @@ const UsersManagement = ({
      const [profilePicture, setProfilePicture] = useState(null); // For storing file object
      const [profilePreview, setProfilePreview] = useState(null); // For preview URL
      const [base64Image, setBase64Image] = useState(null); // For base64 conversion
+     const [isEditMode, setIsEditMode] = useState(false);
+     const [userToDelete, setUserToDelete] = useState(null);
+     const [isDeleting, setIsDeleting] = useState(false);
+
      const {
           dropdowns,
           loading: dropdownLoading,
@@ -42,10 +49,6 @@ const UsersManagement = ({
      } = useUserDropdowns();
 
      const deviceInfo = useDeviceInfo();
-     useEffect(() => {
-          console.log("🖥️ DEVICE INFO FROM HOOK:", deviceInfo);
-     }, [deviceInfo]);
-
 
      // Check permissions on component mount
      useEffect(() => {
@@ -70,7 +73,17 @@ const UsersManagement = ({
           address: "",
      };
 
+     const [filterUser, setFilterUser] = useState({
+          empId: "",
+          name: "",
+          email: "",
+          reportingManager: "",
+          role: "AGENT",
+          assignedTasks: [],
+     });
+
      const [newUser, setNewUser] = useState(initialNewUserState);
+     const [editFormData, setEditFormData] = useState(initialNewUserState);
 
      const potentialManagers = useMemo(
           () =>
@@ -204,30 +217,17 @@ const UsersManagement = ({
                reporting_manager: newUser.reportingManager || "",
                user_password: newUser.password || "123456",
                profile_picture: base64Image || null,
-               // 🔥 FORCE SYSTEM DATA AT END
+               // FORCE SYSTEM DATA AT END
                device_id: deviceInfo.device_id,
                device_type: deviceInfo.device_type,
           };
 
           try {
-               // Call the API to add user
-               console.log(
-                    "🟢 ADD USER REQUEST PAYLOAD:",
-                    JSON.parse(JSON.stringify(userData))
-               );
-
-               console.log("DEVICE FROM HOOK:", deviceInfo);
-               console.log("FINAL PAYLOAD DEVICE:", {
-                    device_id: deviceInfo.device_id,
-                    device_type: deviceInfo.device_type,
-               });
-
                const response = await addUser(userData);
 
                if (response.status === 200 || response.status === 201) {
                     // API call successful
                     const apiUser = response;
-                    console.log(apiUser);
 
                     setShowUserFormModal(false);
 
@@ -236,6 +236,9 @@ const UsersManagement = ({
                          className: "toast-success toast-animate",
                          duration: 4000,
                     });
+
+                    // Refresh the users list
+                    loadUsers();
 
                } else {
                     throw new Error(response.message || "Failed to create user");
@@ -267,12 +270,15 @@ const UsersManagement = ({
           }));
      };
 
-     // Handle close user form modal
+     // Update the close modal function
      const handleCloseUserModal = () => {
           setShowUserFormModal(false);
+          setIsEditMode(false);
+          setEditingUserId(null);
           setFormErrors({});
           setNewUser(initialNewUserState);
-          handleRemoveProfilePicture(); // Clear profile picture
+          setEditFormData(initialNewUserState);
+          handleRemoveProfilePicture();
      };
 
      // Open user form modal
@@ -281,19 +287,155 @@ const UsersManagement = ({
           await loadDropdowns(); // loads all dropdowns in parallel
      };
 
-     const handleDeleteUser = (id) => {
-          if (
-               window.confirm(
-                    "Are you sure? This will not delete their historical logs."
-               )
-          ) {
-               onUpdateUsers(users.filter((u) => u.id !== id));
+     const openEditUserModal = async (user) => {
+          setEditingUserId(user.id);
+          setIsEditMode(true);
+
+          // Convert user data to match form structure
+          const formData = {
+               id: user.id,
+               name: user.name || "",
+               email: user.email || "",
+               role: user.role || "",
+               phone: user.phone || "",
+               designation: user.designation || "",
+               reportingManager: user.reportingManager || "",
+               address: user.address || "",
+               password: "", // Password field will be hidden in edit mode
+          };
+
+          console.log(formData);
+
+          setEditFormData(formData);
+          setNewUser(formData);
+
+          // Load dropdowns
+          await loadDropdowns();
+
+          setShowUserFormModal(true);
+     };
+
+     // Add this function to handle update API call
+     const handleUpdateUser = async () => {
+          const errors = {};
+
+          if (!editFormData.name?.trim()) {
+               errors.name = "Please enter name";
+          }
+
+          if (!editFormData.email?.trim()) {
+               errors.email = "Please enter email";
+          } else if (!/^\S+@\S+\.\S+$/.test(editFormData.email)) {
+               errors.email = "Enter a valid email address";
+          }
+
+          if (!editFormData.role) {
+               errors.role = "Please enter role";
+          }
+
+          // Password is optional in update mode
+          if (editFormData.password && editFormData.password.length < 6) {
+               errors.password = "Password must be at least 6 characters";
+          }
+
+          if (Object.keys(errors).length > 0) {
+               setFormErrors(errors);
+               return;
+          }
+
+          setFormErrors({});
+          setIsSubmitting(true);
+
+          // Prepare update data
+          const updateData = {
+               user_id: editingUserId,
+               user_name: editFormData.name.trim(),
+               user_email: editFormData.email,
+               user_number: editFormData.phone || "",
+               user_address: editFormData.address || "",
+               user_role: editFormData.role.toLowerCase(),
+               user_designation: editFormData.designation || "Agent",
+               reporting_manager: editFormData.reportingManager || "",
+          };
+
+          // Only include password if provided
+          if (editFormData.password?.trim()) {
+               updateData.user_password = editFormData.password;
+          }
+
+          // Include profile picture if changed
+          if (base64Image) {
+               updateData.profile_picture = base64Image;
+          }
+
+          try {
+               console.log("🟢 UPDATE USER REQUEST PAYLOAD:", updateData);
+
+               // Call update API (you'll need to create this service)
+               const response = await updateUser(updateData);
+
+               if (response.status === 200) {
+                    toast.success("User updated successfully!", {
+                         className: "toast-success toast-animate",
+                         duration: 4000,
+                    });
+
+                    // Refresh the users list
+                    loadUsers();
+
+                    // Close modal and reset
+                    handleCloseUserModal();
+               } else {
+                    throw new Error(response.message || "Failed to update user");
+               }
+          } catch (error) {
+               console.error("Error updating user:", error);
+               toast.error(`Error updating user: ${error.message}`, {
+                    className: "toast-error toast-animate",
+                    duration: 4000,
+               });
+          } finally {
+               setIsSubmitting(false);
           }
      };
 
-     const handleEditUser = (user) => {
-          setEditingUserId(user.id);
-          setEditForm({ ...user, password: "" });
+     const handleDeleteUser = (user) => {
+          // if (
+          //      window.confirm(
+          //           "Are you sure? This will not delete their historical logs."
+          //      )
+          // ) {
+          //      onUpdateUsers(users.filter((u) => u.id !== id));
+          // }
+          setUserToDelete(user);
+     };
+
+     const confirmDeleteUser = async () => {
+          if (!userToDelete) return;
+
+          try {
+               setIsDeleting(true);
+
+               const res = await deleteUser(userToDelete.id);
+
+               if (res.status === 200) {
+                    toast.success("User deleted successfully!", {
+                         className: "toast-success toast-animate",
+                         duration: 4000,
+                    });
+                    setUserToDelete(null);
+
+                    // 🔁 Refresh list from backend
+                    loadUsers();
+               } else {
+                    throw new Error(res.message);
+               }
+          } catch (err) {
+               console.error(err);
+               toast.error("Failed to delete user");
+          } finally {
+               setIsDeleting(false);
+          }
      };
 
      const handleSaveUser = () => {
@@ -421,9 +563,9 @@ const UsersManagement = ({
                                    type="text"
                                    className="w-full p-2 border rounded text-sm outline-none focus:border-blue-500"
                                    placeholder="e.g. 1150"
-                                   value={newUser.empId}
+                                   value={filterUser.empId}
                                    onChange={(e) =>
-                                        setNewUser({ ...newUser, empId: e.target.value })
+                                        setFilterUser({ ...filterUser, empId: e.target.value })
                                    }
                               />
                          </div>
@@ -435,8 +577,8 @@ const UsersManagement = ({
                                    type="text"
                                    className="w-full p-2 border rounded text-sm outline-none focus:border-blue-500"
                                    placeholder="e.g. John Doe"
-                                   value={newUser.name}
-                                   onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                                   value={filterUser.name}
+                                   onChange={(e) => setFilterUser({ ...filterUser, name: e.target.value })}
                                    required
                               />
                          </div>
@@ -448,9 +590,9 @@ const UsersManagement = ({
                                    type="email"
                                    className="w-full p-2 border rounded text-sm outline-none focus:border-blue-500"
                                    placeholder="user@co.com"
-                                   value={newUser.email}
+                                   value={filterUser.email}
                                    onChange={(e) =>
-                                        setNewUser({ ...newUser, email: e.target.value })
+                                        setFilterUser({ ...filterUser, email: e.target.value })
                                    }
                               />
                          </div>
@@ -460,9 +602,9 @@ const UsersManagement = ({
                               </label>
                               <select
                                    className="w-full p-2 border rounded text-sm outline-none focus:border-blue-500"
-                                   value={newUser.reportingManager}
+                                   value={filterUser.reportingManager}
                                    onChange={(e) =>
-                                        setNewUser({ ...newUser, reportingManager: e.target.value })
+                                        setFilterUser({ ...filterUser, reportingManager: e.target.value })
                                    }
                               >
                                    <option value="">Select Manager</option>
@@ -479,9 +621,9 @@ const UsersManagement = ({
                               </label>
                               <select
                                    className="w-full p-2 border rounded text-sm outline-none focus:border-blue-500"
-                                   value={newUser.role}
-                                   onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                                   disabled={!isSuperAdmin && newUser.role !== "AGENT"}
+                                   value={filterUser.role}
+                                   onChange={(e) => setFilterUser({ ...filterUser, role: e.target.value })}
+                                   disabled={!isSuperAdmin && FilterUser.role !== "AGENT"}
                               >
                                    <option value="AGENT">Agent</option>
                                    {isSuperAdmin && (
@@ -495,12 +637,12 @@ const UsersManagement = ({
                               </select>
                          </div>
                          <div className="flex gap-2 col-span-2 lg:col-span-1">
-                              {newUser.role === "AGENT" && (
+                              {filterUser.role === "AGENT" && (
                                    <button
-                                        onClick={() => setIsAssigningNewUser(true)}
+                                        onClick={() => setFilterUser(true)}
                                         className="bg-blue-50 text-blue-700 border border-blue-200 px-3 py-2 rounded text-sm font-bold hover:bg-blue-100 flex-1 whitespace-nowrap"
                                    >
-                                        Tasks ({newUser.assignedTasks?.length || 0})
+                                        Tasks ({filterUser.assignedTasks?.length || 0})
                                    </button>
                               )}
                               {/* Only show Add User button if user has user_creation_permission = 1 */}
@@ -517,28 +659,36 @@ const UsersManagement = ({
                </div>
 
                {/* Users Table Component */}
-               <UsersTable
-                    users={users}
-                    editingUserId={editingUserId}
-                    editForm={editForm}
-                    setEditForm={setEditForm}
-                    handleEditUser={handleEditUser}
-                    handleSaveUser={handleSaveUser}
-                    handleCancelEdit={handleCancelEdit}
-                    handleDeleteUser={handleDeleteUser}
-                    handleSendInvite={handleSendInvite}
-                    setAssigningUser={setAssigningUser}
-                    potentialManagers={potentialManagers}
-                    isSuperAdmin={isSuperAdmin}
-                    canViewSalary={canViewSalary}
-               />
+               {loading ? (
+                    <div className="text-center py-8 text-slate-500">
+                         Loading users...
+                    </div>
+               ) : (
+                    <UsersTable
+                         users={users}
+                         editingUserId={editingUserId}
+                         editForm={editForm}
+                         setEditForm={setEditForm}
+                         handleUpdateUser={handleUpdateUser}
+                         handleSaveUser={handleSaveUser}
+                         handleCancelEdit={handleCancelEdit}
+                         handleDeleteUser={handleDeleteUser}
+                         handleSendInvite={handleSendInvite}
+                         setAssigningUser={setAssigningUser}
+                         potentialManagers={potentialManagers}
+                         isSuperAdmin={isSuperAdmin}
+                         canViewSalary={canViewSalary}
+                         openEditUserModal={openEditUserModal}
+                    />
+               )}
 
                {/* User Form Modal */}
                {showUserFormModal && (
                     <AddUserFormModal
-                         newUser={newUser}
-                         setNewUser={setNewUser}
+                         newUser={isEditMode ? editFormData : newUser}
+                         setNewUser={isEditMode ? setEditFormData : setNewUser}
                          handleAddUser={handleAddUser}
+                         handleUpdateUser={handleUpdateUser}
                          roles={dropdowns.roles}
                          designations={dropdowns.designations}
                          reportingManagers={dropdowns.reportingManagers}
@@ -551,6 +701,8 @@ const UsersManagement = ({
                          handleProfilePictureChange={handleProfilePictureChange}
                          handleRemoveProfilePicture={handleRemoveProfilePicture}
                          profilePreview={profilePreview}
+                         isEditMode={isEditMode}
+                         editUserId={editingUserId}
                     />
                )}
 
@@ -569,6 +721,17 @@ const UsersManagement = ({
                          }}
                     />
                )}
+
+               {/* Delete Modal */}
+               {userToDelete && (
+                    <DeleteUserModal
+                         user={userToDelete}
+                         onClose={() => setUserToDelete(null)}
+                         onConfirm={confirmDeleteUser}
+                         isDeleting={isDeleting}
+                    />
+               )}
+
           </div>
      );
 };
