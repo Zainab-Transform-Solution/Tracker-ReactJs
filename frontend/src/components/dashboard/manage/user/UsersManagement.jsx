@@ -13,6 +13,7 @@ import { useUserDropdowns } from "../../../../hooks/useUserDropdowns";
 import { useDeviceInfo } from "../../../../hooks/useDeviceInfo";
 import DeleteUserModal from "./DeleteUserModal";
 import { deleteUser } from "../../../../services/authService";
+import { fileToBase64 } from "../../../../utils/fileToBase64"
 
 const UsersManagement = ({
      users = [],
@@ -66,7 +67,10 @@ const UsersManagement = ({
           role: "",
           password: "",
           designation: "",
-          reportingManager: "",
+          projectManager: "",
+          assistantManager: "",
+          qualityAnalyst: "",
+          team: "",
           email: "",
           name: "",
           phone: "",
@@ -111,14 +115,14 @@ const UsersManagement = ({
      };
 
      // Function to convert image to base64
-     const convertToBase64 = (file) => {
-          return new Promise((resolve, reject) => {
-               const reader = new FileReader();
-               reader.readAsDataURL(file);
-               reader.onload = () => resolve(reader.result);
-               reader.onerror = error => reject(error);
-          });
-     };
+     // const convertToBase64 = (file) => {
+     //      return new Promise((resolve, reject) => {
+     //           const reader = new FileReader();
+     //           reader.readAsDataURL(file);
+     //           reader.onload = () => resolve(reader.result);
+     //           reader.onerror = error => reject(error);
+     //      });
+     // };
 
      // Handle profile picture change
      const handleProfilePictureChange = async (file) => {
@@ -145,7 +149,7 @@ const UsersManagement = ({
 
           // Convert to base64
           try {
-               const base64 = await convertToBase64(file);
+               const base64 = await fileToBase64(file);
                setBase64Image(base64);
           } catch (error) {
                console.error("Error converting image to base64:", error);
@@ -212,9 +216,12 @@ const UsersManagement = ({
                user_email: newUser.email || "",
                user_number: newUser.phone || "",
                user_address: newUser.address || "",
-               user_role: newUser.role.toLowerCase(), // Convert to lowercase for API
-               user_designation: newUser.designation || "Agent",
-               reporting_manager: newUser.reportingManager || "",
+               role_id: newUser.role, 
+               designation_id: newUser.designation || "Agent",
+               project_manager: newUser.projectManager || "",
+               assistant_manager: newUser.assistantManager || "",
+               qa: newUser.qualityAnalyst || "",
+               team: newUser.team || "",
                user_password: newUser.password || "123456",
                profile_picture: base64Image || null,
                // FORCE SYSTEM DATA AT END
@@ -226,9 +233,6 @@ const UsersManagement = ({
                const response = await addUser(userData);
 
                if (response.status === 200 || response.status === 201) {
-                    // API call successful
-                    const apiUser = response;
-
                     setShowUserFormModal(false);
 
                     // Show success message
@@ -284,8 +288,13 @@ const UsersManagement = ({
      // Open user form modal
      const openUserFormModal = async () => {
           setShowUserFormModal(true);
-          await loadDropdowns(); // loads all dropdowns in parallel
+          // await loadDropdowns(); // loads all dropdowns in parallel
      };
+     useEffect(() => {
+          if (showUserFormModal) {
+               loadDropdowns();
+          }
+     }, [showUserFormModal, loadDropdowns]);
 
      const openEditUserModal = async (user) => {
           setEditingUserId(user.id);
@@ -299,7 +308,10 @@ const UsersManagement = ({
                role: user.role || "",
                phone: user.phone || "",
                designation: user.designation || "",
-               reportingManager: user.reportingManager || "",
+               // projectManager: user. || "",
+               // assistantManager: user. || "",
+               // qualityAnalyst: user. || "",
+               // team: user. || "", 
                address: user.address || "",
                password: "", // Password field will be hidden in edit mode
           };
@@ -400,13 +412,6 @@ const UsersManagement = ({
      };
 
      const handleDeleteUser = (user) => {
-          // if (
-          //      window.confirm(
-          //           "Are you sure? This will not delete their historical logs."
-          //      )
-          // ) {
-          //      onUpdateUsers(users.filter((u) => u.id !== id));
-          // }
           setUserToDelete(user);
      };
 
@@ -691,7 +696,10 @@ const UsersManagement = ({
                          handleUpdateUser={handleUpdateUser}
                          roles={dropdowns.roles}
                          designations={dropdowns.designations}
-                         reportingManagers={dropdowns.reportingManagers}
+                         projectManagers={dropdowns.projectManagers}
+                         assistantManagers={dropdowns.assistantManagers}
+                         qas={dropdowns.qas}
+                         teams={dropdowns.teams}
                          isDropdownLoading={dropdownLoading}
                          isSuperAdmin={isSuperAdmin}
                          isSubmitting={isSubmitting}

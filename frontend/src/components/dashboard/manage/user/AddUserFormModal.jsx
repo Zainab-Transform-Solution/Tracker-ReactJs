@@ -8,7 +8,10 @@ const AddUserFormModal = ({
      handleUpdateUser, // Add update handler
      roles = [],
      designations = [],
-     reportingManagers = [],
+     projectManagers = [],
+     assistantManagers = [],
+     qas = [],
+     teams = [],
      isDropdownLoading,
      isSuperAdmin,
      handleCloseUserModal,
@@ -133,7 +136,7 @@ const AddUserFormModal = ({
                                    >
                                         <option value="">Select Role</option>
                                         {roles.map((r) => (
-                                             <option key={r.id} value={r.label.toUpperCase()}>
+                                             <option key={r.role_id} value={r.role_id}>
                                                   {r.label}
                                              </option>
                                         ))}
@@ -179,30 +182,99 @@ const AddUserFormModal = ({
                                    >
                                         <option value="">Select Designation</option>
                                         {designations.map((d) => (
-                                             <option key={d.id} value={d.value}>
+                                             <option key={d.designation_id} value={d.designation_id}>
                                                   {d.label}
                                              </option>
                                         ))}
                                    </select>
                               </div>
 
-                              {/* Reporting Manager */}
+                              {/* Project Manager */}
                               <div>
                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Reporting Manager
+                                        Project Manager
                                    </label>
                                    <select
                                         className="block w-full px-3 py-3 text-sm bg-gray-50 border border-gray-200 rounded-lg 
                                              focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        value={newUser.reportingManager}
+                                        value={newUser.projectManager}
                                         disabled={isDropdownLoading}
                                         onChange={(e) =>
-                                             setNewUser({ ...newUser, reportingManager: e.target.value })
+                                             setNewUser({ ...newUser, projectManager: e.target.value })
                                         }
                                    >
-                                        <option value="">Select Manager</option>
-                                        {reportingManagers.map((m) => (
-                                             <option key={m.id} value={m.value}>
+                                        <option value="">Select Project Manager</option>
+                                        {projectManagers.map((m) => (
+                                             <option key={m.user_id} value={m.user_id}>
+                                                  {m.label}
+                                             </option>
+                                        ))}
+                                   </select>
+                              </div>
+
+                              {/* Assistant Manager */}
+                              <div>
+                                   <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Assistant Manager
+                                   </label>
+                                   <select
+                                        className="block w-full px-3 py-3 text-sm bg-gray-50 border border-gray-200 rounded-lg 
+                                             focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={newUser.assistantManager}
+                                        disabled={isDropdownLoading}
+                                        onChange={(e) =>
+                                             setNewUser({ ...newUser, assistantManager: e.target.value })
+                                        }
+                                   >
+                                        <option value="">Select Assistant Manager</option>
+                                        {assistantManagers.map((m) => (
+                                             <option key={m.user_id} value={m.user_id}>
+                                                  {m.label}
+                                             </option>
+                                        ))}
+                                   </select>
+                              </div>
+
+                              {/* Quality Analyst */}
+                              <div>
+                                   <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Quality Analyst
+                                   </label>
+                                   <select
+                                        className="block w-full px-3 py-3 text-sm bg-gray-50 border border-gray-200 rounded-lg 
+                                             focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={newUser.qualityAnalyst}
+                                        disabled={isDropdownLoading}
+                                        onChange={(e) =>
+                                             setNewUser({ ...newUser, qualityAnalyst: e.target.value })
+                                        }
+                                   >
+                                        <option value="">Select Quality Analyst</option>
+                                        {qas.map((m) => (
+                                             <option key={m.user_id} value={m.user_id}>
+                                                  {m.label}
+                                             </option>
+                                        ))}
+                                   </select>
+                              </div>
+
+                              {/* Team */}
+                              <div>
+                                   <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Team
+                                   </label>
+                                   <select
+                                        className="block w-full px-3 py-3 text-sm bg-gray-50 border border-gray-200 rounded-lg 
+                                             focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={newUser.team}
+                                        disabled={isDropdownLoading}
+                                        onChange={(e) =>
+                                             setNewUser({ ...newUser, team: e.target.value })
+                                        }
+                                   >
+                                        <option value="">Select Team</option>
+                                        {teams.map((m) => (
+                                             <option key={m.user_id} value={m.team_id}>
                                                   {m.label}
                                              </option>
                                         ))}

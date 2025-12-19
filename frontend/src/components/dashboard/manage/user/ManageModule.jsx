@@ -27,6 +27,7 @@ const ManageModule = ({ activeTab, projects, onUpdateProjects }) => {
                          id: u.user_id,
                          name: u.user_name,
                          email: u.user_email,
+                         phone: u.user_number,
                          role: u.user_role.toUpperCase(),
                          designation: u.designation || "",
                          reportingManager: u.reporting_to || "",

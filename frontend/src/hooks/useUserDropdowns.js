@@ -5,7 +5,11 @@ export const useUserDropdowns = () => {
      const [dropdowns, setDropdowns] = useState({
           roles: [],
           designations: [],
-          reportingManagers: []
+          teams: [],
+          projectManagers: [],
+          assistantManagers: [],
+          qas: [],
+          agents: [],
      });
 
      const [loading, setLoading] = useState(false);
@@ -17,7 +21,26 @@ export const useUserDropdowns = () => {
 
           try {
                const data = await fetchUserDropdowns();
-               setDropdowns(data);
+
+               // ✅ VALIDATION GUARD
+               const isValid =
+                    Array.isArray(data.roles) &&
+                    Array.isArray(data.designations) &&
+                    Array.isArray(data.teams) &&
+                    Array.isArray(data.projectManagers) &&
+                    Array.isArray(data.assistantManagers) &&
+                    Array.isArray(data.qas) &&
+                    Array.isArray(data.agents);
+
+               if (!isValid) {
+                    console.warn("⚠️ Invalid dropdown response:", data);
+                    return;
+               }
+
+               setDropdowns(prev => ({
+                    ...prev,
+                    ...data,
+               }));
           } catch (err) {
                console.error("Dropdown fetch failed:", err);
                setError(err);
@@ -30,6 +53,6 @@ export const useUserDropdowns = () => {
           dropdowns,
           loading,
           error,
-          loadDropdowns
+          loadDropdowns,
      };
 };
