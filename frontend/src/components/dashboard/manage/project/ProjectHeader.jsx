@@ -1,11 +1,12 @@
 import React from 'react';
 import { Edit, Trash2, Plus, Briefcase } from 'lucide-react';
 
-const ProjectHeader = ({ project, readOnly = false }) => {
+const ProjectHeader = ({ project, readOnly = false, openEditModal }) => {
+
      // These handlers will be implemented later
-     const handleEdit = () => {
+     const handleEdit = async () => {
           console.log('Edit project:', project.id);
-          // Will open edit modal with prefilled values
+          await openEditModal(project); 
      };
 
      const handleDelete = () => {

@@ -197,6 +197,9 @@ export const useProjectManagement = (initialProjects, onUpdateProjects) => {
      const [formErrors, setFormErrors] = useState({});
      const [isSubmitting, setIsSubmitting] = useState(false);
      const [submitSuccess, setSubmitSuccess] = useState(false);
+     const [isEditMode, setIsEditMode] = useState(false);
+     const [editingProjectId, setEditingProjectId] = useState(null);
+     const [showEditModal, setShowEditModal] = useState(false);
 
      const handleAddProject = async () => {
           const errors = {};
@@ -270,6 +273,95 @@ export const useProjectManagement = (initialProjects, onUpdateProjects) => {
           } finally {
                setIsSubmitting(false);
           }
+     };
+
+     // Add function to open edit modal with project data
+     const openEditModal = (project) => {
+          if (!project) return;
+
+          // Prefill the form with existing project data
+          setNewProject({
+               name: project.name || '',
+               description: project.description || '',
+               projectManagerId: project.project_manager_id?.toString() || '',
+               assistantManagerIds: project.asst_project_manager_id?.map(id => id.toString()) || [],
+               qaManagerIds: project.project_qa_id?.map(id => id.toString()) || [],
+               teamIds: project.project_team_id?.map(id => id.toString()) || [],
+          });
+
+          // Set edit mode states
+          setEditingProjectId(project.id);
+          setIsEditMode(true);
+          setShowEditModal(true);
+
+          // Clear any existing errors
+          setFormErrors({});
+     };
+
+     // Add function to handle project update
+     const handleUpdateProject = async () => {
+          // Similar validation as handleAddProject
+          const errors = {};
+
+          if (!newProject.name?.trim()) {
+               errors.name = "Please enter Project name";
+          }
+
+          if (!newProject.projectManagerId) {
+               errors.projectManagerId = "Please select Project manager";
+          }
+
+          if (!newProject.assistantManagerIds?.length) {
+               errors.assistantManagerIds = "Please select Assistant manager(s)";
+          }
+
+          if (!newProject.qaManagerIds?.length) {
+               errors.qaManagerIds = "Please select QA manager(s)";
+          }
+
+          if (!newProject.teamIds?.length) {
+               errors.teamIds = "Please select Agent(s)";
+          }
+
+          if (Object.keys(errors).length > 0) {
+               setFormErrors(errors);
+               return false;
+          }
+
+          setIsSubmitting(true);
+
+          try {
+               // Note: You'll need to implement an update API call here
+               console.log('Updating project:', editingProjectId, newProject);
+
+               // For now, just simulate success
+               toast.success("Project updated successfully!", {
+                    className: "toast-success toast-animate",
+                    duration: 4000,
+               });
+
+               // Close modal and reset states
+               closeEditModal();
+               return true;
+
+          } catch (err) {
+               console.error("Error updating project:", err);
+               toast.error(`Error updating project: ${err.message}`, {
+                    className: "toast-error toast-animate",
+                    duration: 4000,
+               });
+               return false;
+          } finally {
+               setIsSubmitting(false);
+          }
+     };
+
+     // Add function to close edit modal
+     const closeEditModal = () => {
+          setShowEditModal(false);
+          setIsEditMode(false);
+          setEditingProjectId(null);
+          resetNewProjectForm();
      };
 
      const handleDeleteProject = async (id) => {
@@ -361,6 +453,8 @@ export const useProjectManagement = (initialProjects, onUpdateProjects) => {
           setProjectFiles(null);
           setFormErrors({});
           setSubmitSuccess(false);
+          setIsEditMode(false);
+          setEditingProjectId(null);
      };
 
      const updateNewProjectField = (field, value) => {
@@ -411,6 +505,7 @@ export const useProjectManagement = (initialProjects, onUpdateProjects) => {
           submitSuccess,
           updateNewProjectField,
           handleAddProject,
+          handleUpdateProject,
           handleDeleteProject,
           handleUpdateProjectField,
           handleAddTask,
@@ -419,6 +514,8 @@ export const useProjectManagement = (initialProjects, onUpdateProjects) => {
           clearFieldError,
           handleProjectFilesChange,
           handleRemoveProjectFile,
-          handleModalClose
+          handleModalClose,
+          openEditModal, 
+          closeEditModal, 
      };
 };

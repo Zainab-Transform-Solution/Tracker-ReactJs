@@ -37,7 +37,8 @@ const ProjectsManagement = ({
     clearFieldError,
     handleProjectFilesChange,
     handleRemoveProjectFile,
-    handleModalClose
+    handleModalClose,
+    openEditModal
   } = useProjectManagement(projects, onUpdateProjects);
 
   // Only show if user has permission to edit projects
@@ -110,6 +111,7 @@ const ProjectsManagement = ({
             onUpdateName={(id, v) => handleUpdateProjectField(id, 'name', v)}
             onAddTask={handleAddTask}
             onDeleteTask={handleDeleteTask}
+            openEditModal={openEditModal}
           />
         ))}
       </div>

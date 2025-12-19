@@ -16,7 +16,8 @@ const ProjectCard = ({
   onUpdateQA,
   onUpdateName,
   onAddTask,
-  onDeleteTask
+  onDeleteTask,
+  openEditModal
 }) => {
   return (
     <div className="border border-slate-200 rounded-lg overflow-hidden">
@@ -32,6 +33,7 @@ const ProjectCard = ({
           onUpdateAPM={onUpdateAPM}
           onUpdateQA={onUpdateQA}
           onUpdateName={onUpdateName}
+          openEditModal={openEditModal}
         />
         {!readOnly && (
           <button
